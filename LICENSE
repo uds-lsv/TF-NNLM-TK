@@ -1,4 +1,5 @@
-Copyright 2018 Saarland University, Spoken Language Systems LSV (author: Youssef Oualil).
+Copyright 2018 Saarland University, Spoken Language Systems LSV 
+(author: Youssef Oualil, during his work period at LSV).
 
 Parts of this code are based on the Tensorflow PTB-LM recipe licensed under 
 the Apache License, Version 2.0 by the TensorFlow Authors.

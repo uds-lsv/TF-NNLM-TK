@@ -1,7 +1,7 @@
 # TF-NNLM-TK: A Neural Network Language Model Toolkit in Tensorflow
 
 ## About
-TF-NNLM-TK is a toolkit written in Python3 for neural language modeling using Tensorflow. It includes basic models like RNNs and LSTMs as well as more advanced models. It provides functionality to preprocess the data, train the models and evaluate them. The toolkit is open-source under the Apache 2 license.
+TF-NNLM-TK is a toolkit written in Python3 for neural network language modeling using Tensorflow. It includes basic models like RNNs and LSTMs as well as more advanced models. It provides functionality to preprocess the data, train the models and evaluate them. The toolkit is open-source under the Apache 2 license.
 
 Currently, the following models are supported:
 - Vanilla-RNN
