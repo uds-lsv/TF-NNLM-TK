@@ -95,6 +95,7 @@ def main():
                         help='clip gradients at this value')
 
     config = parser.parse_args()
+    config.model = "lsrc"
     train(config)
   
   
@@ -112,16 +113,26 @@ def train(config):
     config.vocab_size = train_data.vocab_size
     config_test.vocab_size = train_data.vocab_size
  
-     # save the training configuration for future need
+    # create the model save directory if it not already exists 
     if not os.path.isdir(config.save_dir):
-        os.makedirs(config.save_dir)
+        try:
+            os.makedirs(config.save_dir)
+        except:
+            raise Exception("Could not create the model save directory {}".format(config.save_dir))
+            
+    # save the training configuration for future need, e.g. when running test.py
     try:
         with open(os.path.join(config.save_dir, 'config.pkl'), 'wb') as f:
             cPickle.dump(config, f)
     except IOError:
-        print("ERROR: Could not open and/or write the config file {}".format(
+        raise Exception("Could not open and/or write the config file {}".format(
             os.path.join(config.save_dir, 'config.pkl'))) 
-        
+            
+    # save the model's vocabulary for future need, e.g. when running test.py
+    try:
+        train_data.save_vocabulary(config.save_dir)
+    except:
+        raise Exception("Could not save the vocabulary in the model save directory.")
         
     with tf.Graph().as_default():
 

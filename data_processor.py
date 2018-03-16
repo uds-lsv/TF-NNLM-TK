@@ -42,9 +42,19 @@ class DataProcessor():
     If the corpus has been already processed, the model then loads the stored and processed data.
     """
     
-    def __init__(self, corpus_path, batch_size, seq_length, is_training=False, unk='<unk>', history_size=1):
+    def __init__(self, corpus_path, batch_size, seq_length, is_training=False, 
+                 unk='<unk>', history_size=1, vocab_dir_path=None):
         """
         Constructor: Read a corpus and transforms it into a sequence of batches.
+        
+        :param corpus_path 
+        :param batch_size
+        :param seq_length
+        :param is_training
+        :param unk
+        :param history_size
+        :param vocab_dir_path: Directory of the vocabulary file. If None,
+                then the directory of the corpus will be used.
         """
         # In case another encoding is needed 
         self.encoding = 'utf-8'
@@ -55,18 +65,24 @@ class DataProcessor():
         self.data_dir    = os.path.dirname(corpus_path)
         self.is_training = is_training
         self.unk = unk
-
-        input_file  = corpus_path 
-        basename =  os.path.basename(corpus_path)
-        vocab_file  = os.path.join(self.data_dir, "vocabulary.pkl") 
-        nparray_file = os.path.join(self.data_dir, basename[:-3] +  "npy")
-
+        
+        if vocab_dir_path is None:
+            vocab_dir_path = self.data_dir
+            
+        vocab_file  = os.path.join(vocab_dir_path, "vocabulary.pkl") 
+        nparray_file = os.path.join(self.data_dir, os.path.basename(corpus_path)[:-3] +  "npy")
+            
+        if not os.path.exists(vocab_file) and not self.is_training:
+            raise Exception("Vocabulary file {} does not exist but must exist for prediction.".format(vocab_file))
+            
         if not (os.path.exists(vocab_file) and os.path.exists(nparray_file)):
-            print("Processing raw data file {}...!".format(input_file))
-            self.process_file(input_file, vocab_file, nparray_file)
+            print("Processing raw data file {}...!".format(corpus_path))
+            self.process_file(corpus_path, vocab_dir_path, nparray_file)
         else:
-            print("Data file {} was processed in the past, loading...!".format(input_file))
-            self.load_saved(vocab_file, nparray_file)
+            print("Vocab file {} and processed corpus file {} already exist from past run, loading...!".format(
+                        vocab_file, nparray_file))
+            self.load_saved_vocabulary(vocab_file)
+            self.load_saved_corpus(nparray_file)
         
         # create the input/target batches from the data array 
         self.data_to_batches()  
@@ -75,7 +91,7 @@ class DataProcessor():
         self.reset_batch_pointer()
 
 
-    def process_file(self, input_file, vocab_file, nparray_file):
+    def process_file(self, input_file, vocab_dir_path, nparray_file):
         """
         Read and process corpus from file and save it as a numpy array, in addition to saving the vocabulary as well.
         """  
@@ -89,26 +105,19 @@ class DataProcessor():
             self.vocab_size = len(self.vocab)
             self.words = sorted(tuple(self.vocab.keys()))
         
-            vocab_string = self._dict_to_string(self.vocab) 
-            self._save_file(os.path.join(self.data_dir, "vocabulary.txt"), vocab_string, 'text')
-
-            self._save_file(vocab_file, self.vocab, 'pickle')
-        
-            # create an array of our mapped data: each word is replaced by its ID 
-            self.data = np.array(list(map(self.vocab.get, word_list)))
-            self._save_file(nparray_file, self.data, 'numpy')
+            self.save_vocabulary(vocab_dir_path)
         
         # If we are in the test phase, we need to map all OOV words into UNK symbol
         else: 
             _, file_words, _ = self._create_vocab_from_list(word_list)
-            self.vocab = self._read_pickle_file(vocab_file)
+            self.vocab = self._read_pickle_file(os.path.join(vocab_dir_path, "vocabulary.pkl"))
             
             train_words = set(self.vocab.keys())
             word_list = [word if word in train_words else self.unk for word in word_list]
-
-            self.data = np.array(list(map(self.vocab.get, word_list)))
-            self._save_file(nparray_file, self.data, 'numpy') 
-
+        
+        # create an array of our mapped data: each word is replaced by its ID 
+        self.data = np.array(list(map(self.vocab.get, word_list)))
+        self._save_file(nparray_file, self.data, 'numpy')
 
     def _read_text_file(self, filename):
         """ 
@@ -129,7 +138,7 @@ class DataProcessor():
             with open(filename, 'rb') as f:
                 return cPickle.load(f)
         except IOError: 
-            print("ERROR: Could not open and/or read pickle file {}".format(filename))  
+            raise Expction("Could not open and/or read pickle file {}".format(filename))  
             
                            
     def _save_file(self, filename, content, filetype='text'):
@@ -146,9 +155,9 @@ class DataProcessor():
                 with io.open(filename, 'wb') as f:
                     cPickle.dump(content, f)
             else:
-                print("ERROR: File type {} unknown.".format(filetype))   
+                raise Exception("File type {} unknown.".format(filetype))   
         except IOError:
-            print("ERROR: Could not write and/or save file {}".format(filename))
+            raise Exception("Could not write and/or save file {}".format(filename))
      
 
     def _dict_to_string(self, dictionary):
@@ -183,24 +192,40 @@ class DataProcessor():
         return vocab, words, count_pairs
     
     
-    def load_saved(self, vocab_file, nparray_file):
-        """
-        Load a previously processed corpus from a file storing the data as a numpy array.
+    def load_saved_vocabulary(self, vocab_file):
+        """ 
+        Load a previously created vocabulary file
         """
         try:
             with open(vocab_file, 'rb') as f:
                 self.vocab = cPickle.load(f)
         except IOError: 
-            print("ERROR: Could not open and/or read pickle file {}".format(vocab_file))   
+            raise Exception("Could not open and/or read pickle file {}".format(vocab_file))   
+            
         self.words = sorted(tuple(self.vocab.keys()))
-        self.vocab_size = len(self.words)
+        self.vocab_size = len(self.words)    
+    
+    def load_saved_corpus(self, nparray_file):
+        """
+        Load a previously processed corpus from a file storing the data as a numpy array.
+        """
         
         try:
             self.data = np.load(nparray_file)
         except IOError:  
-            print("ERROR: Could not open and/or read  data (numpy array) file {}".format(nparray_file))  
+            raise Exception("Could not open and/or read  data (numpy array) file {}".format(nparray_file))  
         self.num_batches = int(self.data.size / (self.batch_size *
                                                    self.seq_length))
+
+    def save_vocabulary(self, save_dir_path):
+        """
+        Saves the vocabulary to the soecified directory in form of a 
+        human-readbale vocabulary.txt and a pickled vocabular.pkl.
+        """
+        vocab_string = self._dict_to_string(self.vocab) 
+        self._save_file(os.path.join(save_dir_path, "vocabulary.txt"), vocab_string, 'text')
+        
+        self._save_file(os.path.join(save_dir_path, "vocabulary.pkl") , self.vocab, 'pickle')
 
     def data_to_batches(self):
         """

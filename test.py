@@ -62,7 +62,7 @@ def main():
         with open(os.path.join(test_config.save_dir, 'config.pkl'), 'rb') as f:
             config = cPickle.load(f)
     except IOError:
-        raise IOError("ERROR: Could not open and/or read the config file {}.".format(
+        raise IOError("Could not open and/or read the config file {}.".format(
             os.path.join(test_config.save_dir, 'config.pkl'))) 
     
     # copy the parameters that are specific to the test data
@@ -71,7 +71,7 @@ def main():
     config.batch_size = test_config.batch_size 
     config.seq_length = test_config.seq_length 
     config.model_path = test_config.model_file 
-    
+       
     if not hasattr(config, 'history_size'): 
         config.history_size = 1
     
@@ -85,22 +85,15 @@ def calculate_perplexity(config):
     """
     
     # load the config files and vocabulary files
-    try:  
-        with open(os.path.join(config.save_dir, 'vocabulary.pkl'), 'rb') as f:
-            words, vocab = cPickle.load(f) 
-            word_set = set(words)  
-    except IOError:
-        print("ERROR: Could not open and/or read the vocabulary file {}".format(
-            os.path.join(config.save_dir, 'vocabulary.pkl'))) 
-
     if not os.path.exists(config.model_path  + '.meta'):
-        print("ERROR: Could not open and/or read model file {}".format(config.model_path + '.meta'))
-        sys.exit(0)
+        raise Exception("Could not open and/or read model file {}".format(config.model_path + '.meta'))
 
     # process the test corpus and load it into batches 
-    test_data = DataProcessor(config.test_file, config.batch_size, config.seq_length, False, '<unk>', history_size=config.history_size)
+    # vocabulary is loaded from the model directory
+    test_data = DataProcessor(config.test_file, config.batch_size, config.seq_length, 
+							  is_training=False, unk='<unk>', history_size=config.history_size,
+							  vocab_dir_path=config.save_dir)
 
-    
     # define/load the model  
     with tf.variable_scope("Model", reuse=False):
         if config.model == 'lsrc':
