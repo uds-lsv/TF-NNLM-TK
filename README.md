@@ -15,7 +15,7 @@ Currently, the following models are supported:
 If you have installed Tensorflow with Python3, we first need to download the toolkit and some training data. We'll use the PTB dataset provided in Tomas Mikolov's tutorial. For this, you can run the following code in your command line:
 
 ```bash
-git clone https://repos.lsv.uni-saarland.de/youalil/TF-NNLM-TK.git TODO replace
+git clone https://github.com/uds-lsv/TF-NNLM-TK.git
 cd TF-NNLM-TK
 wget http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz
 tar -xzf simple-examples.tgz
