@@ -52,8 +52,10 @@ def main():
     
     parser.add_argument('--batch_size', type=int, default=20,
                         help='mini-batch size')
-    parser.add_argument('--seq_length', type=int, default=5,
-                        help='word sequence length processed at each forward pass')
+    parser.add_argument('--seq_length', type=int, default=1,
+                        help='Word sequence length processed at each forward pass. Increasing the value can increase '
+                              + 'processing speed, but might result in slightly different results due to some words '
+                              + 'at the end of the corpus not fitting into the batch-size x seq-length matrix.')
     
     test_config = parser.parse_args()
     test_config.save_dir = os.path.dirname(test_config.model_file) 

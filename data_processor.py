@@ -127,7 +127,7 @@ class DataProcessor():
             with open(filename, "r", encoding=self.encoding) as f:
                 return f.read()  
         except IOError:
-                print("ERROR: Could not open and/or read file {}".format(filename))
+                raise Exception("ERROR: Could not open and/or read file {}".format(filename))
 
 
     def _read_pickle_file(self, filename):
@@ -138,7 +138,7 @@ class DataProcessor():
             with open(filename, 'rb') as f:
                 return cPickle.load(f)
         except IOError: 
-            raise Expction("Could not open and/or read pickle file {}".format(filename))  
+            raise Exception("Could not open and/or read pickle file {}".format(filename))  
             
                            
     def _save_file(self, filename, content, filetype='text'):
