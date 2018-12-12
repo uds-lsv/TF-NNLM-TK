@@ -125,7 +125,11 @@ def train(config):
     except IOError:
         print("ERROR: Could not open and/or write the config file {}".format(
             os.path.join(config.save_dir, 'config.pkl'))) 
-        
+    
+    try:
+        train_data.save_vocabulary(config.save_dir)
+    except:
+        raise Exception("Could not save the vocabulary in the model save directory.")
 
     with tf.Graph().as_default():
 
