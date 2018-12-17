@@ -21,14 +21,8 @@
 # retrieved in January 2018)
 ###############################################################################
 
-import io
-import os
-
 import tensorflow as tf
-import numpy as np
 import math
-
-
 
 
 def chunk(A, seq_len, overlap=0):
@@ -44,7 +38,7 @@ def chunk(A, seq_len, overlap=0):
     elif A.ndim == 2:
         Alen = A.shape[1]
         n = min(seq_len, Alen-1)
-        return [A[:,i:i+seq_len] for i in range(0, Alen - seq_len+1, seq_len-overlap)]
+        return [A[:i:i+seq_len] for i in range(0, Alen - seq_len+1, seq_len-overlap)]
     else:
         print("ERROR in function chunk: this function works only for 1-D and 2-D arrays")
         exit(0) 
@@ -61,7 +55,6 @@ def concat_overlap(A, seq_len, overlap=0, concat_axis=0):
     Alen = len(A)
     n = min(seq_len, Alen-1) 
     return [tf.concat(A[i:i+seq_len], concat_axis) for i in range(0, Alen - seq_len+1, seq_len-overlap)]
-
 
 
 def xewy_plus_z(x, y, z, activation=None):
@@ -81,7 +74,7 @@ def xscalary_plus_z(scalar, x, y, activation=None):
     Multiply a vector by a scalar and add it to a second vector, with the application
     of an activation function when it is specified.
     """
-    R = tf.add(tf.scalar_mul(scalar,x), y)
+    R = tf.add(tf.scalar_mul(scalar, x), y)
     if activation:
         return activation(R)
     else: 
@@ -90,8 +83,5 @@ def xscalary_plus_z(scalar, x, y, activation=None):
     
 # re-implementation of Xavier initializer for tests
 def normalized_initializer(layer_i, layer_i_plus_1):
-    range =   0.5*math.sqrt(2/(layer_i + layer_i_plus_1))
-    return tf.random_uniform_initializer(-range, range)  
-
-
-    
+    val_range = 0.5*math.sqrt(2/(layer_i + layer_i_plus_1))
+    return tf.random_uniform_initializer(-val_range, val_range)

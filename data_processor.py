@@ -35,8 +35,7 @@ from utils import chunk
 Python_version = sys.version_info[0] == 3
 
 
-        
-class DataProcessor():
+class DataProcessor(object):
     """
     Class to read a corpus and transform it into two (numpy) arrays storing input and target batches. 
     If the corpus has been already processed, the model then loads the stored and processed data.
@@ -59,19 +58,31 @@ class DataProcessor():
         # In case another encoding is needed 
         self.encoding = 'utf-8'
         
-        self.batch_size  = batch_size
-        self.seq_length  = seq_length
-        self.history_size= history_size
-        self.data_dir    = os.path.dirname(corpus_path)
+        self.batch_size = batch_size
+        self.seq_length = seq_length
+        self.history_size = history_size
+        self.data_dir = os.path.dirname(corpus_path)
         self.is_training = is_training
         self.unk = unk
-        
+
+        self.vocab = None
+        self.vocab_size = 0
+        self.words = None
+
+        self.data = None
+        self.input = None
+        self.target = None
+
+        # batch pointer
+        self.pointer = 0
+        self.num_batches = 0
+
         if vocab_dir_path is None:
             vocab_dir_path = self.data_dir
             
-        vocab_file  = os.path.join(vocab_dir_path, "vocabulary.pkl") 
-        nparray_file = os.path.join(self.data_dir, os.path.basename(corpus_path)[:-3] +  "npy")
-            
+        vocab_file = os.path.join(vocab_dir_path, "vocabulary.pkl")
+        nparray_file = os.path.join(self.data_dir, os.path.splitext(os.path.basename(corpus_path))[0])
+
         if not os.path.exists(vocab_file) and not self.is_training:
             raise Exception("Vocabulary file {} does not exist but must exist for prediction.".format(vocab_file))
             
@@ -89,7 +100,6 @@ class DataProcessor():
 
         # make sure that the index points at the first batch 
         self.reset_batch_pointer()
-
 
     def process_file(self, input_file, vocab_dir_path, nparray_file):
         """
@@ -129,7 +139,6 @@ class DataProcessor():
         except IOError:
                 raise Exception("ERROR: Could not open and/or read file {}".format(filename))
 
-
     def _read_pickle_file(self, filename):
         """ 
         Read a pickle file and return its content
@@ -139,15 +148,14 @@ class DataProcessor():
                 return cPickle.load(f)
         except IOError: 
             raise Exception("Could not open and/or read pickle file {}".format(filename))  
-            
-                           
+
     def _save_file(self, filename, content, filetype='text'):
         """ 
         Save some content into a file for three possible formats: text, numpy and pickle.  
         """
         try:
             if filetype == 'numpy':
-                    np.save(filename,content)
+                    np.save(filename, content)
             elif filetype == 'text':
                 with io.open(filename, 'w') as f:
                     f.write(content)
@@ -158,26 +166,23 @@ class DataProcessor():
                 raise Exception("File type {} unknown.".format(filetype))   
         except IOError:
             raise Exception("Could not write and/or save file {}".format(filename))
-     
 
     def _dict_to_string(self, dictionary):
         """
         Turn a list of words into a long string. This is useful for debugging.
         """
-        list_dict = [ str(d)+'\t'+str(dictionary[d]) for d in dictionary ]
+        list_dict = [str(d)+'\t'+str(dictionary[d]) for d in dictionary]
         return '\n'.join(list_dict)
-    
-                   
+
     def _file_to_word_list(self, filename):
         """ 
         Read a file and return its content as a list with newline replaced by <eps> tag.
         """
         content = self._read_text_file(filename)
         if Python_version:
-            return content.replace("\n", "<eos>").split()
+            return content.replace("\n", " <eos> ").split()
         else:
-            return content.decode("utf-8").replace("\n", "<eos>").split()
-
+            return content.decode("utf-8").replace("\n", " <eos> ").split()
 
     def _create_vocab_from_list(self, word_list):
         """ 
@@ -190,8 +195,7 @@ class DataProcessor():
         # Create our vocabulary map: dict{..., word:ID, ...} 
         vocab = dict(zip(words, range(len(words))))
         return vocab, words, count_pairs
-    
-    
+
     def load_saved_vocabulary(self, vocab_file):
         """ 
         Load a previously created vocabulary file
@@ -214,8 +218,7 @@ class DataProcessor():
             self.data = np.load(nparray_file)
         except IOError:  
             raise Exception("Could not open and/or read  data (numpy array) file {}".format(nparray_file))  
-        self.num_batches = int(self.data.size / (self.batch_size *
-                                                   self.seq_length))
+        self.num_batches = int(self.data.size / (self.batch_size * self.seq_length))
 
     def save_vocabulary(self, save_dir_path):
         """
@@ -225,35 +228,36 @@ class DataProcessor():
         vocab_string = self._dict_to_string(self.vocab) 
         self._save_file(os.path.join(save_dir_path, "vocabulary.txt"), vocab_string, 'text')
         
-        self._save_file(os.path.join(save_dir_path, "vocabulary.pkl") , self.vocab, 'pickle')
+        self._save_file(os.path.join(save_dir_path, "vocabulary.pkl"), self.vocab, 'pickle')
 
     def data_to_batches(self):
         """
         Create batches from data stored in an (numpy) array.
         """
         
-        self.num_batches = int((self.data.size - self.history_size ) / (self.batch_size *
-                                                   self.seq_length))
+        self.num_batches = int((self.data.size - self.history_size) / (self.batch_size * self.seq_length))
         
         # Print an error message when the data array is too small
         if self.num_batches == 0:
             assert False, "ERROR: Cannot create batches ==> data size={}, \
-             batch size={}, segment size={}".format(self.data.size, 
-             self.batch_size, self.seq_length) 
+             batch size={}, segment size={}".format(self.data.size, self.batch_size, self.seq_length)
 
-        self.data = self.data[:(self.num_batches * self.batch_size * self.seq_length) + self.history_size ]
+        self.data = self.data[:(self.num_batches * self.batch_size * self.seq_length) + self.history_size]
         
         # Remove the last words in the input chunk and shift the target words
-        input = self.data[:-1]
+        indata = self.data[:-1]
         target = np.copy(self.data)
         target = target[self.history_size:]
 
-        input = np.array(chunk(input, (self.num_batches*self.seq_length) + self.history_size-1, overlap=self.history_size-1))
-        target = np.array(chunk(target, (self.num_batches*self.seq_length), overlap=0))
+        indata = np.array(chunk(indata, (self.num_batches*self.seq_length) + self.history_size-1,
+                                overlap=self.history_size-1))
+        target = np.array(chunk(target, (self.num_batches*self.seq_length),
+                                overlap=0))
         
-        self.input  = chunk(input, self.seq_length + self.history_size-1, overlap=self.history_size-1) 
-        self.target = chunk(target, self.seq_length, overlap=0) 
-
+        self.input = chunk(indata, self.seq_length + self.history_size-1,
+                           overlap=self.history_size-1)
+        self.target = chunk(target, self.seq_length,
+                            overlap=0)
 
     def next_batch(self):
         """
@@ -268,9 +272,3 @@ class DataProcessor():
         Reset the batch pointer to the beginning of the data.
         """
         self.pointer = 0        
-
-        
-
-
-
-         

@@ -12,10 +12,12 @@ Currently, the following models are supported:
 - Long-Short Range Context
 
 ## A First Example
-If you have installed Tensorflow with Python3, we first need to download the toolkit and some training data. We'll use the PTB dataset provided in Tomas Mikolov's tutorial. For this, you can run the following code in your command line:
+First install Python and Tensorflow. The code is tested with Python 3 and Tensorflow 1.8. 
+
+For this first example, we need to download the toolkit and some training data. We'll use the PTB dataset provided in Tomas Mikolov's tutorial. For this, you can run the following code in your command line:
 
 ```bash
-git clone https://github.com/uds-lsv/TF-NNLM-TK.git
+git clone https://repos.lsv.uni-saarland.de/youalil/TF-NNLM-TK.git TODO replace
 cd TF-NNLM-TK
 wget http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz
 tar -xzf simple-examples.tgz
@@ -110,9 +112,7 @@ The script also offers a few other parameters to control the speed in case you a
 
 ## Authors and Licence
 
-This toolkit was developed by Youssef Oualil, during his time at LSV, and the [Spoken Language Systems group (LSV)](https://www.lsv.uni-saarland.de/) at Saarland University. This work was funded in part by SFB 1102. 
-
-You can contact us at code [ at ] lsv . uni-saarland . de
+This toolkit was originally developed by Youssef Oualil, during his time at [LSV, Saarland University](https://www.lsv.uni-saarland.de/). It is currently mantained at the LSV group by [Michael A. Hedderich](https://www.lsv.uni-saarland.de/?id=188) with contributions by Adam Kusmirek. This work was funded in part by SFB 1102. 
 
 This code is licensed under Apache 2.0. Parts of this code are based on the Tensorflow PTB-LM recipe licensed under the Apache License, Version 2.0 by the TensorFlow Authors. Please see the LICENCE file for details. 
 

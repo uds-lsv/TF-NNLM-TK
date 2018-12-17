@@ -27,16 +27,15 @@ import tensorflow as tf
 import numpy as np
 
 from tensorflow.contrib import rnn
-from tensorflow.contrib import legacy_seq2seq
 
 from utils import concat_overlap, xewy_plus_z, xscalary_plus_z
 
 
 def data_type():
-  return tf.float32
+    return tf.float32
         
 
-class LM():
+class LM(object):
     """
     LM to predict the next word in a sequence given its context.
     """
@@ -79,12 +78,13 @@ class LM():
         self.recurrent_state_size = config.embed_size
         
         print("[INFO] Initializing model: {}".format(self.model))  
-        if config.num_layers <= 0 :
-            print("\n[WARNING] number of non-recurrent hidden layers in SRNN models cannot be 0 ===> --num_layers should be > 0 \n")
+        if config.num_layers <= 0:
+            print("\n[WARNING] number of non-recurrent hidden layers in SRNN models cannot be 0 "
+                  "===> --num_layers should be > 0 \n")
             exit(0)
             
         ############################################################### 
-        ##############      DEFINE THE PLACEHOLDERS      ##############
+        # #############      DEFINE THE PLACEHOLDERS      ##############
         # placeholder for the training input data and target words
         
         self.input_data = tf.placeholder(
@@ -93,7 +93,7 @@ class LM():
             tf.int32, [config.batch_size, config.seq_length])
                 
         ############################################################### 
-        #######  DEFINE TRAINABLE VARIABLES (WEIGHTS AND BIASES)  #####
+        # ######  DEFINE TRAINABLE VARIABLES (WEIGHTS AND BIASES)  #####
         
         # Define the initializer of embeddings, weights and biases
         if self.init_method == "xavier": 
@@ -104,7 +104,7 @@ class LM():
         # variable for word embeddings
         with tf.variable_scope("input_layer"):
             self.embedding = tf.get_variable("embedding", [self.vocab_size, self.embed_size], 
-                                        initializer=initializer)
+                                             initializer=initializer)
 
         # define and initialize the SRNN weight vector/matrix.
         wisrnn_init_vector = np.random.uniform(0.0, 1.0, self.recurrent_state_size)
@@ -112,20 +112,20 @@ class LM():
         if self.model == "wd-srnn":
             with tf.variable_scope("srnn_layer", reuse=False):
                 # for WDSRNN, we initialize all sequential embeddings to the same random vector between 0 and 1.
-                wdsrnn_init_matrix=np.array([wisrnn_init_vector,]*self.vocab_size)
+                wdsrnn_init_matrix = np.array([wisrnn_init_vector, ]*self.vocab_size)
                 wdsrnn_initializer = tf.constant_initializer(wdsrnn_init_matrix)
                 srnn_embedding = tf.get_variable("srnn_embedding", [self.vocab_size, self.recurrent_state_size],
                                                  initializer=wdsrnn_initializer)
 
         # WI-SRNN
-        if self.model == "wi-srnn" :
+        if self.model == "wi-srnn":
             with tf.variable_scope("srnn_layer", reuse=False):
                 wisrnn_initializer = tf.constant_initializer(wisrnn_init_vector)
                 srnn_weight_vector = tf.get_variable("srnn_weight_vector",  self.recurrent_state_size, 
                                                      initializer=wisrnn_initializer)
 
         # FF-SRNN (forgetting factor)
-        if self.model == "ff-srnn" :
+        if self.model == "ff-srnn":
             with tf.variable_scope("srnn_layer", reuse=False):
                 self.srnn_forgetting_factor = tf.constant(config.forgetting_factor) 
                 
@@ -134,17 +134,17 @@ class LM():
         self.hidden_b = [] 
         with tf.variable_scope("non_recurrent_layers"):
             self.hidden_w.append(tf.get_variable("hidden_w/1", 
-                                               [self.recurrent_state_size*self.history_size, self.hidden_size], 
-                                               initializer=initializer))
+                                                 [self.recurrent_state_size*self.history_size, self.hidden_size],
+                                                 initializer=initializer))
             self.hidden_b.append(tf.get_variable("hidden_b/1", [self.hidden_size], 
                                                  initializer=initializer))
 
             for layer in range(1, self.num_layers):
                 self.hidden_w.append(tf.get_variable("hidden_w/" + str(layer+1), 
-                                                   [self.hidden_size, self.hidden_size],
-                                                   initializer=initializer))
+                                                     [self.hidden_size, self.hidden_size],
+                                                     initializer=initializer))
                 self.hidden_b.append(tf.get_variable("hidden_b/" + str(layer+1), [self.hidden_size],
-                                                   initializer=initializer)) 
+                                                     initializer=initializer))
      
         # weights and biases of the hidden-to-output layer
         with tf.variable_scope("output_layer"):
@@ -153,10 +153,9 @@ class LM():
                                             initializer=initializer)
             self.output_b = tf.get_variable("output_b", [self.vocab_size],
                                             initializer=initializer) 
-      
-                
+
         ############################################################### 
-        ##########         BUILD THE LM NETWORK GRAPH        ##########
+        # #########         BUILD THE LM NETWORK GRAPH        ##########
                           
         # extract the embedding of each char input in the batch
         inputs = tf.nn.embedding_lookup(self.embedding, self.input_data)
@@ -178,14 +177,13 @@ class LM():
         # build the LM and update the hidden state
         last_layer, self.final_state = self.srnn_sequence_graph(config, inputs)
 
-        
         for layer in range(config.num_layers): 
             last_layer = self.activation(tf.nn.xw_plus_b(last_layer, self.hidden_w[layer], self.hidden_b[layer]))
             if self.training and config.output_keep_prob < 1:
                 last_layer = tf.nn.dropout(last_layer, config.output_keep_prob)
             
-        #self.logits = tf.matmul(output, self.output_w) + self.output_b
-        #self.probs = tf.nn.softmax(self.logits)
+        # self.logits = tf.matmul(output, self.output_w) + self.output_b
+        # self.probs = tf.nn.softmax(self.logits)
 
         logits = tf.nn.xw_plus_b(last_layer, self.output_w, self.output_b)
             
@@ -212,17 +210,16 @@ class LM():
             tvars = tf.trainable_variables()
                 
             # perform gradient clipping
-            grads, _ = tf.clip_by_global_norm(tf.gradients(self.cost, tvars),
-                                                  config.grad_clip)
+            grads, _ = tf.clip_by_global_norm(tf.gradients(self.cost, tvars), config.grad_clip)
+
             # update variables (weights, biases, embeddings...)
             with tf.name_scope('optimizer'):
-                #optimizer = tf.train.AdamOptimizer(self.lr)
-                #self.train_op = optimizer.apply_gradients(zip(grads, tvars))
+                # optimizer = tf.train.AdamOptimizer(self.lr)
+                # self.train_op = optimizer.apply_gradients(zip(grads, tvars))
                 optimizer = tf.train.GradientDescentOptimizer(self.lr)
                 self.train_op = optimizer.apply_gradients(
                     zip(grads, tvars),
                     global_step=tf.contrib.framework.get_or_create_global_step())
-
 
     def srnn_sequence_graph(self, config, inputs):
         """
@@ -236,10 +233,10 @@ class LM():
             if self.model == "wi-srnn":
                 wi_srnn_weights = tf.get_variable("srnn_weight_vector")
             
-                for iter in range(config.seq_length+self.history_size-1):
-                    state = xewy_plus_z(wi_srnn_weights, state, inputs[iter], tf.nn.tanh)
-                    #state = tf.multiply(wi_srnn_weights, state) 
-                    #state = tf.nn.tanh(tf.add(state, inputs[iter]))
+                for i in range(config.seq_length+self.history_size-1):
+                    state = xewy_plus_z(wi_srnn_weights, state, inputs[i], tf.nn.tanh)
+                    # state = tf.multiply(wi_srnn_weights, state)
+                    # state = tf.nn.tanh(tf.add(state, inputs[i]))
                     outputs.append(state)
 
             elif self.model == "wd-srnn":
@@ -248,17 +245,17 @@ class LM():
                 wd_srnn_weights = tf.split(wd_srnn_weights, self.input_len, 1)
                 wd_srnn_weights = [tf.squeeze(srnn_embed_, [1]) for srnn_embed_ in wd_srnn_weights]  
             
-                for iter in range(config.seq_length+self.history_size-1):
-                    state = xewy_plus_z(wd_srnn_weights[iter], state, inputs[iter], tf.nn.tanh)
-                    #state = tf.multiply(wd_srnn_weights[iter], state) 
-                    #state = tf.nn.tanh(tf.add(state, inputs[iter]))
+                for i in range(config.seq_length+self.history_size-1):
+                    state = xewy_plus_z(wd_srnn_weights[i], state, inputs[i], tf.nn.tanh)
+                    # state = tf.multiply(wd_srnn_weights[i], state)
+                    # state = tf.nn.tanh(tf.add(state, inputs[i]))
                     outputs.append(state)
 
             elif self.model == "ff-srnn":            
-                for iter in range(config.seq_length+self.history_size-1):
-                    state = xscalary_plus_z(self.srnn_forgetting_factor, state, inputs[iter], tf.nn.tanh)
-                    #state = tf.scalar_mul(self.srnn_forgetting_factor, state) 
-                    #state = tf.nn.tanh(tf.add(state, inputs[iter]))
+                for i in range(config.seq_length+self.history_size-1):
+                    state = xscalary_plus_z(self.srnn_forgetting_factor, state, inputs[i], tf.nn.tanh)
+                    # state = tf.scalar_mul(self.srnn_forgetting_factor, state)
+                    # state = tf.nn.tanh(tf.add(state, inputs[i]))
                     outputs.append(state)
                                       
             last_state = outputs[-self.history_size]
@@ -270,8 +267,7 @@ class LM():
                 output = tf.nn.dropout(output, self.srnn_keep_prob)
 
         return output, last_state
-    
-    
+
     def run_model(self, session, data, eval_op=None, verbosity=10000, verbose=False):
         """
         Train or test the current model on some given data.
@@ -297,8 +293,8 @@ class LM():
 
         print_tresh = 0 
         for step in range(data.num_batches):
-            input, target = data.next_batch()         
-            feed_dict = {self.initial_state: state, self.input_data: input, self.targets: target}
+            indata, target = data.next_batch()
+            feed_dict = {self.initial_state: state, self.input_data: indata, self.targets: target}
             vals = session.run(fetches, feed_dict)
             cost = vals["cost"]
             state = vals["final_state"]
@@ -308,12 +304,14 @@ class LM():
             
             total_proc_words = float((iters-1)*data.batch_size)  
 
-            if verbose and (step==0 or total_proc_words > print_tresh or step == data.num_batches-1) :      
-                print("[INFO] Progress: {:.2f}% | Perplexity: {:.3f} | Total Words: {:.1f}K | Speed: {:.1f}K word/second".format(
-                    (step+1) / (data.num_batches) * 100, np.exp(costs/iters), 
-                    total_proc_words / 1000,
-                    total_proc_words / (1000 *(time.time() - start_time))))
+            if verbose and (step == 0 or total_proc_words > print_tresh or step == data.num_batches-1):
+                print("[INFO] Progress: {:.2f}% | "
+                      "Perplexity: {:.3f} | "
+                      "Total Words: {:.1f}K | "
+                      "Speed: {:.1f}K word/second"
+                      .format((step+1) / data.num_batches * 100, np.exp(costs/iters),
+                              total_proc_words / 1000,
+                              total_proc_words / (1000 * (time.time() - start_time))))
                 print_tresh += verbosity
                         
         return np.exp(costs / iters)
-    

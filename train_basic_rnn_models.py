@@ -23,8 +23,6 @@
 
 from __future__ import print_function
 
-import time
-import sys
 import os
 
 import copy
@@ -32,7 +30,6 @@ import argparse
 
 from six.moves import cPickle
 import tensorflow as tf
-import numpy as np
 
 from data_processor import DataProcessor
 from basic_rnn_models import LM
@@ -45,9 +42,11 @@ def main():
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     parser.add_argument('--train_file', type=str, default='data/ptb/ptb.train.txt',
-                        help='path to the training file containing one sentence per line (</eos> is automatically added).')
+                        help='path to the training file containing one sentence per line '
+                             '(</eos> is automatically added).')
     parser.add_argument('--test_file', type=str, default='data/ptb/ptb.test.txt',
-                        help='path to the test (or validation) file containing one sentence per line (</eos> is automatically added).')
+                        help='path to the test (or validation) file containing one sentence per line '
+                             '(</eos> is automatically added).')
     parser.add_argument('--save_dir', type=str, default='lstm_small',
                         help='directory to store intermediate models, model configuration and final model')
 
@@ -60,12 +59,15 @@ def main():
     parser.add_argument('--num_layers', type=int, default=2,
                         help='number of recurrent layers')
     parser.add_argument('--bottleneck_size', type=int, default=None,
-                        help='number of neurons in the additional bottleneck layer for recurrent models (None = not used)')
+                        help='number of neurons in the additional bottleneck layer for recurrent models '
+                             '(None = not used)')
     
     parser.add_argument('--lstmp_proj_size', type=int, default=None,
-                        help='number of neurons in the additional projection layer of the LSTMP model (None = not used)')
-    parser.add_argument('--use_peepholes', type=bool, default=False,
-                        help='use peepholes in the LSTM/LSTMP model (this parameters is used only in LSTM/LSTMP models)')
+                        help='number of neurons in the additional projection layer of the LSTMP model '
+                             '(None = not used)')
+    parser.add_argument('--use_peepholes', action='store_true',
+                        help='use peepholes in the LSTM/LSTMP model '
+                             '(this parameters is used only in LSTM/LSTMP models)')
     parser.add_argument('--activation', type=str, default='relu',
                         help='activation function of the bottleneck layer (if not None)')
     
@@ -99,8 +101,7 @@ def main():
     config = parser.parse_args()
     train(config)
   
-  
-  
+
 def train(config):
     
     # training and test configuration are basically the same     
@@ -110,12 +111,13 @@ def train(config):
     
     # process the training corpus (if not done yet) and return the training batches and other info 
     train_data = DataProcessor(config.train_file, config.batch_size, config.seq_length, True, '<unk>', history_size=1)
-    test_data  = DataProcessor(config_test.test_file, config_test.batch_size, config_test.seq_length, False, '<unk>', history_size=1)
+    test_data = DataProcessor(config_test.test_file, config_test.batch_size, config_test.seq_length, False, '<unk>',
+                              history_size=1)
 
     config.vocab_size = train_data.vocab_size
     config_test.vocab_size = train_data.vocab_size
  
-     # save the training configuration for future need
+    # save the training configuration for future need
     if not os.path.isdir(config.save_dir):
         os.makedirs(config.save_dir)
     try:
@@ -127,7 +129,7 @@ def train(config):
 
     try:
         train_data.save_vocabulary(config.save_dir)
-    except:
+    except Exception:
         raise Exception("Could not save the vocabulary in the model save directory.")
         
     with tf.Graph().as_default():
@@ -166,7 +168,9 @@ def train(config):
                                                          eval_op=model_train.train_op, verbosity=50000, verbose=True)
                 
                 test_perplexity = model_test.run_model(session, test_data)
-                print("\n[SUMMARY] Epoch: {} | Train Perplexity: {:.3f} | Test Perplexity: {:.3f} \n".format(e + 1, train_perplexity, test_perplexity))
+                print("\n[SUMMARY] Epoch: {} | "
+                      "Train Perplexity: {:.3f} | "
+                      "Test Perplexity: {:.3f} \n".format(e + 1, train_perplexity, test_perplexity))
                 print('========================')
             
                 # save model after each epoch        

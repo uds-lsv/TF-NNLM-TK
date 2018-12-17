@@ -29,14 +29,12 @@ import numpy as np
 from tensorflow.contrib import rnn
 from tensorflow.contrib import legacy_seq2seq
 
-from utils import concat_overlap
-
 
 def data_type():
-  return tf.float32
+    return tf.float32
         
 
-class LM():
+class LM(object):
     """
     This classe implements the basic RNN-LMs using the built-in Tensorflow cells. 
     In particular, this calss can be used to train vanilla-RNN, LSTM (with and 
@@ -66,7 +64,7 @@ class LM():
         elif config.activation == 'relu6':
             self.activation = tf.nn.relu6 
 
-        self.history_size=1
+        self.history_size = 1
         self.model = config.model
         self.init_method = config.init_method
         self.num_layers = config.num_layers
@@ -77,18 +75,22 @@ class LM():
         
         # check consistencies in the LSTM parameters
         if config.model == "lstm" or config.model == "lstmp":
-            if config.use_peepholes == True or config.lstmp_proj_size:
+            if config.use_peepholes is True or config.lstmp_proj_size:
                 self.model = "lstmp"
             else:
                 self.model = "lstm"
 
         if self.model == "lstmp" and config.bottleneck_size:
-            print("[WARNING] you are using a bottleneck layer on the the top of an LSTMP model, which includes an internal bottleneck (projection) layer...!")
+            print("[WARNING] you are using a bottleneck layer on the the top of an LSTMP model, "
+                  "which includes an internal bottleneck (projection) layer...!")
         
         self.embed_size = config.embed_size
-        self.hidden_state_size = config.hidden_size    # hidden size (layer): internal to the models (e.g., memory in LSTM).
-        self.recurrent_state_size = config.hidden_size # recurrent layer: layer that feeds back in time into the model.
-        self.last_layer_size = config.hidden_size      # last layer: layer right before the output layer (can be bottleneck or recurrent layer).
+        # hidden size (layer): internal to the models (e.g., memory in LSTM).
+        self.hidden_state_size = config.hidden_size
+        # recurrent layer: layer that feeds back in time into the model.
+        self.recurrent_state_size = config.hidden_size
+        # last layer: layer right before the output layer (can be bottleneck or recurrent layer).
+        self.last_layer_size = config.hidden_size
 
         if config.bottleneck_size: 
             self.last_layer_size = config.bottleneck_size   
@@ -98,20 +100,18 @@ class LM():
             self.last_layer_size = config.lstmp_proj_size
             if config.bottleneck_size: 
                 self.last_layer_size = config.bottleneck_size  
-                
 
-        ############################################################### 
-        ##############      DEFINE THE PLACEHOLDERS      ##############
+        # ##############################################################
+        # #############      DEFINE THE PLACEHOLDERS      ##############
         # placeholder for the training input data and target words
         
         self.input_data = tf.placeholder(
             tf.int32, [config.batch_size, config.seq_length])
         self.targets = tf.placeholder(
             tf.int32, [config.batch_size, config.seq_length])
-        
-        
-        ############################################################### 
-        #######  DEFINE TRAINABLE VARIABLES (WEIGHTS AND BIASES)  #####
+
+        # ##############################################################
+        # ######  DEFINE TRAINABLE VARIABLES (WEIGHTS AND BIASES)  #####
 
         # define the initializer of embeddings, weights and biases
         if self.init_method == "xavier": 
@@ -122,14 +122,14 @@ class LM():
         # word embeddings
         with tf.variable_scope("input_layer"):
             self.embedding = tf.get_variable("embedding", [self.vocab_size, self.embed_size], 
-                                        initializer=initializer)
+                                             initializer=initializer)
 
         # weights and biases of the bottleneck layer (if used) 
         if config.bottleneck_size:
             with tf.variable_scope("bottleneck_layer"):
                 self.bottleneck_w = tf.get_variable("bottleneck_w", 
-                                                [self.recurrent_state_size, config.bottleneck_size],
-                                                initializer=initializer)
+                                                    [self.recurrent_state_size, config.bottleneck_size],
+                                                    initializer=initializer)
                 self.bottleneck_b = tf.get_variable("bottleneck_b", [config.bottleneck_size], 
                                                     initializer=initializer) 
                 
@@ -140,10 +140,9 @@ class LM():
                                             initializer=initializer)
             self.output_b = tf.get_variable("output_b", [self.vocab_size], 
                                             initializer=initializer) 
-      
-                
-        ############################################################### 
-        ##########         BUILD THE LM NETWORK GRAPH        ##########
+
+        # ##############################################################
+        # #########         BUILD THE LM NETWORK GRAPH        ##########
                           
         # extract the embedding of each char input in the batch
         inputs = tf.nn.embedding_lookup(self.embedding, self.input_data)
@@ -171,8 +170,8 @@ class LM():
         else:
             last_layer = rec_state 
             
-        #self.logits = tf.matmul(output, self.output_w) + self.output_b
-        #self.probs = tf.nn.softmax(self.logits)
+        # self.logits = tf.matmul(output, self.output_w) + self.output_b
+        # self.probs = tf.nn.softmax(self.logits)
         logits = tf.nn.xw_plus_b(last_layer, self.output_w, self.output_b)
         # reshape logits to be a 3-D tensor for sequence loss
         self.logits = tf.reshape(logits, [config.batch_size, config.seq_length, self.vocab_size])
@@ -198,12 +197,10 @@ class LM():
             grads, _ = tf.clip_by_global_norm(tf.gradients(self.cost, tvars), config.grad_clip)
             # update variables (weights, biases, embeddings...)
             with tf.name_scope('optimizer'):
-                #optimizer = tf.train.AdamOptimizer(self.lr)
+                # optimizer = tf.train.AdamOptimizer(self.lr)
                 optimizer = tf.train.GradientDescentOptimizer(self.lr)
                 self.train_op = optimizer.apply_gradients(zip(grads, tvars),
-                    global_step=tf.contrib.framework.get_or_create_global_step())
-    
-
+                                                          global_step=tf.contrib.framework.get_or_create_global_step())
 
     def build_recurrence_cell(self, config): 
         """
@@ -228,20 +225,18 @@ class LM():
         
         # Apply dropout if required
         for _ in range(self.num_layers):
-            if  self.model == "lstmp": # you can change the activation function of the project layer
+            if self.model == "lstmp":  # you can change the activation function of the project layer
                 cell = _cell_(self.hidden_state_size, use_peepholes=self.use_peepholes, num_proj=config.lstmp_proj_size)
             else:    
                 cell = _cell_(self.hidden_state_size, activation=activation_)
                 
-            if self.training and self.output_keep_prob < 1.0 :
-                cell = rnn.DropoutWrapper(cell,output_keep_prob=self.output_keep_prob)
+            if self.training and self.output_keep_prob < 1.0:
+                cell = rnn.DropoutWrapper(cell, output_keep_prob=self.output_keep_prob)
             cells.append(cell)
 
         # build and return the TF multi-recurrent cell graph
         return rnn.MultiRNNCell(cells, state_is_tuple=True)
-   
 
-        
     def time_sequence_graph(self, inputs):
         """
         Apply the recurrence cell to an input sequence (each batch entry is a sequence of words).
@@ -252,7 +247,6 @@ class LM():
         output = tf.reshape(tf.concat(outputs, 1), [-1, self.recurrent_state_size])
             
         return output, last_state
-    
 
     def run_model(self, session, data, eval_op=None, verbosity=10000, verbose=False):
         """
@@ -279,8 +273,8 @@ class LM():
 
         print_tresh = 0 
         for step in range(data.num_batches):
-            input, target = data.next_batch()         
-            feed_dict = {self.initial_state: state, self.input_data: input, self.targets: target}
+            indata, target = data.next_batch()
+            feed_dict = {self.initial_state: state, self.input_data: indata, self.targets: target}
             vals = session.run(fetches, feed_dict)
             cost = vals["cost"]
             state = vals["final_state"]
@@ -290,12 +284,14 @@ class LM():
             
             total_proc_words = float((iters-1)*data.batch_size)  
 
-            if verbose and (step==0 or total_proc_words > print_tresh or step == data.num_batches-1) :      
-                print("[INFO] Progress: {:.2f}% | Perplexity: {:.3f} | Total Words: {:.1f}K | Speed: {:.1f}K word/second".format(
-                    (step+1) / (data.num_batches) * 100, np.exp(costs/iters), 
-                    total_proc_words / 1000,
-                    total_proc_words / (1000 *(time.time() - start_time))))
+            if verbose and (step == 0 or total_proc_words > print_tresh or step == data.num_batches-1):
+                print("[INFO] Progress: {:.2f}% | "
+                      "Perplexity: {:.3f} | "
+                      "Total Words: {:.1f}K | "
+                      "Speed: {:.1f}K word/second"
+                      .format((step+1) / data.num_batches * 100, np.exp(costs/iters),
+                              total_proc_words / 1000,
+                              total_proc_words / (1000 * (time.time() - start_time))))
                 print_tresh += verbosity
                         
         return np.exp(costs / iters)
-    
