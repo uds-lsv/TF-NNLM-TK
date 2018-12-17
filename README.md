@@ -17,7 +17,7 @@ First install Python and Tensorflow. The code is tested with Python 3 and Tensor
 For this first example, we need to download the toolkit and some training data. We'll use the PTB dataset provided in Tomas Mikolov's tutorial. For this, you can run the following code in your command line:
 
 ```bash
-git clone https://repos.lsv.uni-saarland.de/youalil/TF-NNLM-TK.git TODO replace
+git clone git clone https://github.com/uds-lsv/TF-NNLM-TK.git
 cd TF-NNLM-TK
 wget http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz
 tar -xzf simple-examples.tgz
