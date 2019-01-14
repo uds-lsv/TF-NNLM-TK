@@ -38,7 +38,7 @@ def chunk(A, seq_len, overlap=0):
     elif A.ndim == 2:
         Alen = A.shape[1]
         n = min(seq_len, Alen-1)
-        return [A[:i:i+seq_len] for i in range(0, Alen - seq_len+1, seq_len-overlap)]
+        return [A[:,i:i+seq_len] for i in range(0, Alen - seq_len+1, seq_len-overlap)]
     else:
         print("ERROR in function chunk: this function works only for 1-D and 2-D arrays")
         exit(0) 
