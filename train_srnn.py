@@ -40,7 +40,12 @@ def main():
     # read description of each argument for more info
     parser = argparse.ArgumentParser(
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    
+
+    parser.add_argument('--gpu_allow_growth', action='store_true',
+                        help='flag enabling TF gpu memory growth management')
+    parser.add_argument('--gpu_memory_factor', type=float, default=1.0,
+                        help='fraction of available gpu memory to be used per process')
+
     parser.add_argument('--train_file', type=str, default='data/ptb/ptb.train.txt',
                         help='path to the training file containing one sentence per line '
                              '(</eos> is automatically added)')
@@ -140,9 +145,13 @@ def train(config):
         with tf.name_scope("Test"):
             with tf.variable_scope("Model", reuse=True):
                 model_test = LM(config_test, False)
-                    
+
+        tf_config = tf.ConfigProto()
+        tf_config.gpu_options.allow_growth = config.gpu_allow_growth
+        tf_config.gpu_options.per_process_gpu_memory_fraction = config.gpu_memory_factor
+
         # run  the training/testing
-        with tf.Session() as session:
+        with tf.Session(config=tf_config) as session:
             
             session.run(tf.global_variables_initializer())
 
