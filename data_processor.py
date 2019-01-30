@@ -109,7 +109,7 @@ class DataProcessor(object):
         
         # If we are in the training phase, we need to create the vocabulary as well
         if self.is_training: 
-            self.vocab, _, count_pairs = self._create_vocab_from_list(word_list)
+            self.vocab, _, count_pairs = self._create_vocab_from_list(word_list + [self.unk])
             count_string = self._dict_to_string(dict(count_pairs)) 
             self._save_file(os.path.join(self.data_dir, "counts.txt"), count_string, 'text')
             self.vocab_size = len(self.vocab)
